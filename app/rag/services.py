@@ -1,18 +1,18 @@
 """
 RAG (Retrieval-Augmented Generation) engine business logic.
+Integrates vector similarity searches with isolated context generation.
 """
 import uuid
-from typing import List, Tuple
+from typing import List
 from sqlmodel import Session, select
 from sqlalchemy import cast
 from pgvector.sqlalchemy import Vector
 
 from app.modules.knowledge.models import DocumentEmbedding
-from app.modules.engine.schemas import ChatMessage
 from app.core.logging import get_logger
 from app.core.config import settings
-from app.services.embedding import EmbeddingService
-from app.services.llm import LLMService
+from app.rag.embedding import EmbeddingService
+from app.rag.llm import LLMService
 
 logger = get_logger(__name__)
 
@@ -29,9 +29,8 @@ class RAGService:
         """
         Retrieve relevant context from the knowledge base using vector similarity search.
 
-        CRITICAL FIX: Uses parameterized queries to prevent SQL injection.
-        Previously used: .order_by(text(f"embedding <=> '{query_vector}'"))
-        Now uses: DocumentEmbedding.embedding.cosine_distance(cast(query_vector, Vector(768)))
+        Uses parameterized queries with pgvector's cosine_distance.
+        Strictly filters by tenant_id for data isolation.
 
         Args:
             query: User query text
@@ -46,13 +45,12 @@ class RAGService:
         """
         logger.info(f"Retrieving context for query: {query[:50]}...")
 
-        # Generate query embedding
+        # Generate query embedding using localized EmbeddingService
         query_vector = EmbeddingService.get_embedding(query)
         logger.debug(f"Query embedding generated (dimension: {len(query_vector)})")
 
-        # CRITICAL FIX: SQL Injection Prevention
+        # SQL Injection Prevention
         # Use pgvector's cosine_distance method with proper type casting
-        # instead of string interpolation in raw SQL
         stmt = (
             select(
                 DocumentEmbedding.chunk_content,
@@ -95,7 +93,7 @@ class RAGService:
     @staticmethod
     async def generate_response(
         query: str,
-        thread: List[ChatMessage],
+        thread: List["ChatMessage"],
         tenant_id: uuid.UUID,
         system_prompt: str,
         db: Session
@@ -121,12 +119,14 @@ class RAGService:
             EmbeddingProcessingError: If query embedding fails
             LLMError: If response generation fails
         """
+        from app.modules.engine.schemas import ChatMessage
+
         logger.info(f"Generating RAG response for tenant: {tenant_id}")
 
         # Step 1: Retrieve context
         context = RAGService.retrieve_context(query, tenant_id, db)
 
-        # Step 2: Generate response
+        # Step 2: Generate response using localized LLMService
         response = await LLMService.generate_response(
             system_prompt=system_prompt,
             context=context,

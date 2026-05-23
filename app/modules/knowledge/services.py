@@ -5,16 +5,16 @@ import uuid
 import urllib.request
 from typing import List
 from sqlmodel import Session, select
-from fastapi import UploadFile
-
+from fastapi import UploadFile, HTTPException
+import os
 from app.modules.knowledge.models import Document, DocumentEmbedding
 from app.core.logging import get_logger
 from app.core.exceptions import DocumentNotFoundError, EmbeddingProcessingError
 from app.core.constants import DocumentStatus
-from app.core.chunking import chunk_text_smart
 from app.core.config import settings
 from app.services.storage import StorageService
-from app.services.embedding import EmbeddingService
+from app.rag.chunking import chunk_text_smart
+from app.rag.embedding import EmbeddingService
 
 logger = get_logger(__name__)
 
@@ -52,7 +52,11 @@ class DocumentService:
         """
         logger.info(f"Uploading document: {file.filename} for tenant: {tenant_id}")
 
-        # Read file bytes
+        # Validate file extension
+        ext = os.path.splitext(file.filename)[1].lower().lstrip('.')
+        if ext not in settings.ALLOWED_FILE_EXTENSIONS:
+            from app.core.constants import ErrorMessage
+            raise HTTPException(status_code=400, detail=ErrorMessage.INVALID_FILE_TYPE)
         file_bytes = await file.read()
         file_size = len(file_bytes)
 

@@ -31,6 +31,7 @@ class TenantService:
 
         new_tenant = Tenant(
             name=tenant_data.name,
+            email=tenant_data.email,
             custom_prompt=tenant_data.custom_prompt
         )
 
@@ -62,6 +63,30 @@ class TenantService:
         if not tenant:
             logger.warning(f"Tenant not found: {tenant_id}")
             raise TenantNotFoundError(str(tenant_id))
+
+        return tenant
+
+    @staticmethod
+    def get_tenant_by_email(email: str, db: Session) -> Tenant:
+        """
+        Get a tenant by email.
+
+        Args:
+            email: Tenant email
+            db: Database session
+
+        Returns:
+            Tenant instance
+
+        Raises:
+            TenantNotFoundError: If tenant not found
+        """
+        logger.debug(f"Fetching tenant by email: {email}")
+
+        tenant = db.exec(select(Tenant).where(Tenant.email == email)).first()
+        if not tenant:
+            logger.warning(f"Tenant not found with email: {email}")
+            raise TenantNotFoundError(f"email: {email}")
 
         return tenant
 
@@ -111,6 +136,8 @@ class TenantService:
             raise TenantNotFoundError(str(tenant_id))
 
         tenant.name = tenant_data.name
+        if tenant_data.email is not None:
+            tenant.email = tenant_data.email
         tenant.custom_prompt = tenant_data.custom_prompt
 
         db.add(tenant)

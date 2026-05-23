@@ -9,7 +9,7 @@ from app.core.database import get_session
 from app.core.responses import Envelope, success_response
 from app.core.constants import ResponseCode
 from app.modules.engine.schemas import ChatRequest, ChatResponse
-from app.modules.engine.services import RAGService
+from app.rag.services import RAGService
 from app.modules.tenants.services import TenantService
 from app.core.logging import get_logger
 from app.core.exceptions import InvalidTenantHeaderError

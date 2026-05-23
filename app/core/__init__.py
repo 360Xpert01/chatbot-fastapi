@@ -15,7 +15,6 @@ from app.core.exceptions import (
 )
 from app.core.responses import Envelope, success_response, error_response
 from app.core.logging import get_logger, init_app_logging
-from app.core.chunking import chunk_text_smart, chunk_text_with_metadata
 from app.core.database import engine, init_db, get_session
 
 __all__ = [
@@ -40,9 +39,6 @@ __all__ = [
     # Logging
     "get_logger",
     "init_app_logging",
-    # Chunking
-    "chunk_text_smart",
-    "chunk_text_with_metadata",
     # Database
     "engine",
     "init_db",

@@ -68,6 +68,35 @@ def list_tenants(
     )
 
 
+@router.get("/search", response_model=Envelope[TenantResponse])
+def search_tenant_by_email(
+    email: str,
+    db: Session = Depends(get_session)
+) -> Envelope[TenantResponse]:
+    """
+    Search for a tenant by email.
+
+    Args:
+        email: Tenant email
+        db: Database session
+
+    Returns:
+        Envelope containing the tenant data
+
+    Raises:
+        TenantNotFoundError: If tenant not found (handled by global exception handler)
+    """
+    logger.info(f"GET /api/v1/tenants/search?email={email}")
+
+    tenant = TenantService.get_tenant_by_email(email, db)
+
+    return success_response(
+        code=ResponseCode.TENANT_RETRIEVED,
+        message="Tenant retrieved successfully",
+        data=TenantResponse.model_validate(tenant)
+    )
+
+
 @router.get("/{tenant_id}", response_model=Envelope[TenantResponse])
 def get_tenant(
     tenant_id: uuid.UUID,

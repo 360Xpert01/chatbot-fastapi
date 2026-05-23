@@ -16,6 +16,7 @@ class Tenant(SQLModel, table=True):
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     name: str = Field(max_length=255, nullable=False)
+    email: str = Field(max_length=255, unique=True, index=True, nullable=False)
     custom_prompt: Optional[str] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

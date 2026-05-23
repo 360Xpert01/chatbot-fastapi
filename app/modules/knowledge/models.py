@@ -7,6 +7,7 @@ from typing import Optional, List
 from sqlmodel import SQLModel, Field, Relationship
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import Column
+from app.core.config import settings
 
 
 class Document(SQLModel, table=True):
@@ -41,8 +42,9 @@ class DocumentEmbedding(SQLModel, table=True):
     tenant_id: uuid.UUID = Field(foreign_key="tenants.id", ondelete="CASCADE")
     document_id: uuid.UUID = Field(foreign_key="documents.id", ondelete="CASCADE")
     chunk_content: str
-    # 768 dimensions matches text-embedding-004 from Google Gemini
-    embedding: List[float] = Field(sa_column=Column(Vector(768), nullable=False))
+
+    # Embedding vector dimension aligns with configured EMBEDDING_DIMENSION
+    embedding: List[float] = Field(sa_column=Column(Vector(settings.EMBEDDING_DIMENSION), nullable=False))
 
     # Relationships
     tenant: "Tenant" = Relationship(back_populates="embeddings")

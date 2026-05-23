@@ -10,7 +10,7 @@ logger = get_logger(__name__)
 
 # Initialize OpenRouter client (OpenAI-compatible API)
 openai_client = AsyncOpenAI(
-    base_url="https://openrouter.ai/api/v1",
+    base_url=settings.LLM_PROVIDER_URL,
     api_key=settings.OPENAI_API_KEY
 )
 
@@ -56,7 +56,6 @@ class LLMService:
             # Build message history
             messages = [{"role": "system", "content": full_system_instructions}]
 
-            # CRITICAL FIX: Changed "ghost_content" to "content" (line 68 bug)
             for msg in thread:
                 messages.append({"role": msg.role, "content": msg.content})
 
