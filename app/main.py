@@ -2,6 +2,7 @@
 Multi-Tenant AI Platform - Main Application Entry Point
 """
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import init_db
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import init_app_logging, get_logger
@@ -20,6 +21,15 @@ app = FastAPI(
     title="Multi-Tenant AI Platform",
     version="2.0",
     description="RAG-powered multi-tenant chat application with document knowledge base"
+)
+
+# Add CORS Middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Register global exception handlers

@@ -2,14 +2,14 @@
 Tenant management API endpoints.
 """
 import uuid
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, status
 from sqlmodel import Session, select
 
 from app.core.database import get_session
 from app.core.responses import Envelope, success_response
 from app.core.constants import ResponseCode
-from app.modules.tenants.schemas import TenantCreate, TenantUpdate, TenantResponse
+from app.modules.tenants.schemas import TenantCreate, TenantUpdate, TenantResponse, PaginatedTenantResponse, PaginationMeta
 from app.modules.tenants.services import TenantService
 from app.core.logging import get_logger
 
@@ -44,29 +44,46 @@ def create_tenant(
     )
 
 
-@router.get("", response_model=Envelope[List[TenantResponse]])
+@router.get("", response_model=Envelope[PaginatedTenantResponse]) # <-- Updated response model
 def list_tenants(
+    name: Optional[str] = None,
+    email: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
     db: Session = Depends(get_session)
-) -> Envelope[List[TenantResponse]]:
+) -> Envelope[PaginatedTenantResponse]:
     """
-    List all tenants.
-
-    Args:
-        db: Database session
-
-    Returns:
-        Envelope containing list of all tenants
+    List all tenants with professional metadata pagination.
     """
-    logger.info("GET /api/v1/tenants - Listing all tenants")
+    logger.info(
+        f"GET /api/v1/tenants - Filters: name={name}, email={email}, "
+        f"Pagination: skip={skip}, limit={limit}"
+    )
 
-    tenants = TenantService.list_tenants(db)
+    # Fetch result dictionary containing data list and integer count
+    result = TenantService.list_tenants(
+        db=db, 
+        name=name, 
+        email=email, 
+        skip=skip, 
+        limit=limit
+    )
+
+    # Format into our paginated schema payload
+    paginated_data = PaginatedTenantResponse(
+        items=[TenantResponse.model_validate(t) for t in result["items"]],
+        pagination=PaginationMeta(
+            total_count=result["total_count"],
+            skip=skip,
+            limit=limit
+        )
+    )
 
     return success_response(
         code=ResponseCode.TENANTS_LISTED,
         message="Tenants retrieved successfully",
-        data=[TenantResponse.model_validate(t) for t in tenants]
+        data=paginated_data
     )
-
 
 @router.get("/search", response_model=Envelope[TenantResponse])
 def search_tenant_by_email(

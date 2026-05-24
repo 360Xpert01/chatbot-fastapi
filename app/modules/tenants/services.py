@@ -8,6 +8,7 @@ from app.modules.tenants.models import Tenant
 from app.modules.tenants.schemas import TenantCreate, TenantUpdate
 from app.core.logging import get_logger
 from app.core.exceptions import TenantNotFoundError
+from sqlmodel import func
 
 logger = get_logger(__name__)
 
@@ -91,22 +92,36 @@ class TenantService:
         return tenant
 
     @staticmethod
-    def list_tenants(db: Session) -> List[Tenant]:
-        """
-        List all tenants.
+    def list_tenants(
+        db: Session,
+        name: str = None,
+        email: str = None,
+        skip: int = 0,
+        limit: int = 100
+    ) -> dict: # <-- Changed return type to dict containing data + total
+        logger.debug(f"Listing tenants with pagination (skip={skip}, limit={limit})")
 
-        Args:
-            db: Database session
+        # Build base query
+        statement = select(Tenant)
+        if name:
+            statement = statement.where(Tenant.name.contains(name))
+        if email:
+            statement = statement.where(Tenant.email.contains(email))
 
-        Returns:
-            List of all tenants
-        """
-        logger.debug("Listing all tenants")
+        # 1. Get total count matching criteria before applying pagination limits
+        count_statement = select(func.count()).select_from(statement.subquery())
+        total_count = db.exec(count_statement).one()
 
-        tenants = db.exec(select(Tenant)).all()
+        # 2. Apply pagination and fetch items
+        statement = statement.offset(skip).limit(limit)
+        tenants = db.exec(statement).all()
 
-        logger.info(f"Retrieved {len(tenants)} tenants")
-        return tenants
+        logger.info(f"Retrieved {len(tenants)} out of {total_count} total tenants")
+
+        return {
+            "items": tenants,
+            "total_count": total_count
+        }
 
     @staticmethod
     def update_tenant(

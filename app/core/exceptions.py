@@ -4,7 +4,7 @@ Custom exceptions and global exception handlers for the application.
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from typing import Optional
-
+from fastapi.exceptions import RequestValidationError 
 
 # Custom Exception Classes
 class TenantNotFoundError(Exception):
@@ -124,19 +124,41 @@ async def llm_error_handler(request: Request, exc: LLMError) -> JSONResponse:
         }
     )
 
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """Handle Pydantic/FastAPI request validation errors and format them into our standard envelope."""
+    
+    # Extract the custom messages from the validation errors
+    error_messages = []
+    for error in exc.errors():
+        # e.g., "body -> name: Only lowercase letters..."
+        location = " -> ".join(str(loc) for loc in error["loc"])
+        msg = error["msg"]
+        error_messages.append(f"{location}: {msg}")
+    
+    # Combine messages into a clean, single string
+    full_message = "Validation failed: " + "; ".join(error_messages)
+
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "success": False,
+            "code": "VALIDATION_ERROR",
+            "message": full_message,
+            "data": None
+        }
+    )
 
 async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Handle all unhandled exceptions."""
+    """Temporary debug version of your catch-all handler"""
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "success": False,
             "code": "INTERNAL_SERVER_ERROR",
-            "message": "An unexpected error occurred",
+            "message": f"Debug Info: {str(exc)}", # <-- This shows the hidden error message
             "data": None
         }
     )
-
 
 def register_exception_handlers(app):
     """
@@ -149,4 +171,5 @@ def register_exception_handlers(app):
     app.add_exception_handler(EmbeddingProcessingError, embedding_processing_error_handler)
     app.add_exception_handler(StorageError, storage_error_handler)
     app.add_exception_handler(LLMError, llm_error_handler)
+    app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(Exception, general_exception_handler)
