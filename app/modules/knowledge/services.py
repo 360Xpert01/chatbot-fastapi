@@ -15,6 +15,9 @@ from app.core.config import settings
 from app.services.storage import StorageService
 from app.rag.chunking import chunk_text_smart
 from app.rag.embedding import EmbeddingService
+from app.rag.parsers import DocumentParser
+import asyncio
+from functools import partial
 
 logger = get_logger(__name__)
 
@@ -83,9 +86,14 @@ class DocumentService:
             db.commit()
 
             # Extract text
-            raw_text = file_bytes.decode("utf-8", errors="ignore")
-            logger.info(f"Extracted {len(raw_text)} characters from {file.filename}")
+            loop = asyncio.get_event_loop()
+            raw_text = await loop.run_in_executor(
+                None,
+                partial(DocumentParser.extract_text, file_bytes, file.filename)
+            )
 
+            logger.info(f"Extracted {len(raw_text)} characters from {file.filename}")
+            
             # Use sentence-aware chunking (IMPROVEMENT: replaces naive character-based chunking)
             chunks = chunk_text_smart(
                 raw_text,
@@ -96,13 +104,20 @@ class DocumentService:
 
             logger.info(f"Created {len(chunks)} chunks for {file.filename}")
 
+            if not chunks:
+                raise EmbeddingProcessingError("No chunks produced after parsing — file may be empty or unreadable", db_doc.id)
+
+            BATCH_SIZE = 10
             # Generate embeddings for each chunk
             for idx, chunk in enumerate(chunks):
                 if not chunk.strip():
                     continue
 
                 logger.debug(f"Generating embedding for chunk {idx + 1}/{len(chunks)}")
-                vector_values = EmbeddingService.get_embedding(chunk)
+                vector_values = await loop.run_in_executor(
+                    None,
+                    partial(EmbeddingService.get_embedding, chunk)
+                )
 
                 db_embedding = DocumentEmbedding(
                     tenant_id=tenant_id,
@@ -111,6 +126,10 @@ class DocumentService:
                     embedding=vector_values
                 )
                 db.add(db_embedding)
+                
+                if (idx + 1) % BATCH_SIZE == 0:
+                    db.commit()
+                    logger.debug(f"Committed batch up to chunk {idx + 1}/{len(chunks)}")
 
             # Mark as done
             db_doc.embedding_status = DocumentStatus.DONE

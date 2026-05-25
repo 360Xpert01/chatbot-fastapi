@@ -4,7 +4,7 @@ Custom exceptions and global exception handlers for the application.
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from typing import Optional
-from fastapi.exceptions import RequestValidationError 
+from fastapi.exceptions import RequestValidationError, HTTPException as FastAPIHTTPException
 
 # Custom Exception Classes
 class TenantNotFoundError(Exception):
@@ -44,6 +44,14 @@ class LLMError(Exception):
     """Raised when LLM generation fails."""
     def __init__(self, message: str):
         super().__init__(message)
+
+class HTTPException(FastAPIHTTPException):
+    """
+    Custom wrapper to allow 'from app.core.exceptions import HTTPException'
+    while preserving full FastAPI/Starlette compatibility.
+    """
+    def __init__(self, status_code: int, detail: Optional[str] = None, headers: Optional[dict] = None):
+        super().__init__(status_code=status_code, detail=detail, headers=headers)
 
 
 # Global Exception Handlers
@@ -160,6 +168,29 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
         }
     )
 
+async def http_exception_handler(request: Request, exc: FastAPIHTTPException) -> JSONResponse:
+    """Interceptors native or custom HTTPExceptions to return our standard envelope."""
+    
+    # Simple dynamic status code string mapper
+    code_mapping = {
+        status.HTTP_400_BAD_REQUEST: "BAD_REQUEST",
+        status.HTTP_401_UNAUTHORIZED: "UNAUTHORIZED",
+        status.HTTP_403_FORBIDDEN: "FORBIDDEN",
+        status.HTTP_404_NOT_FOUND: "NOT_FOUND",
+        status.HTTP_422_UNPROCESSABLE_ENTITY: "VALIDATION_ERROR"
+    }
+    error_code = code_mapping.get(exc.status_code, "HTTP_ERROR")
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "success": False,
+            "code": error_code,
+            "message": exc.detail,
+            "data": None
+        }
+    )
+
 def register_exception_handlers(app):
     """
     Register all custom exception handlers with the FastAPI app.
@@ -171,5 +202,7 @@ def register_exception_handlers(app):
     app.add_exception_handler(EmbeddingProcessingError, embedding_processing_error_handler)
     app.add_exception_handler(StorageError, storage_error_handler)
     app.add_exception_handler(LLMError, llm_error_handler)
+    app.add_exception_handler(FastAPIHTTPException, http_exception_handler)
+    app.add_exception_handler(HTTPException, http_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(Exception, general_exception_handler)

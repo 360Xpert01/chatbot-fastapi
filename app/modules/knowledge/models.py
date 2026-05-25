@@ -21,7 +21,7 @@ class Document(SQLModel, table=True):
     tenant_id: uuid.UUID = Field(foreign_key="tenants.id", ondelete="CASCADE")
     filename: str = Field(max_length=255)
     file_url: str
-    file_type: Optional[str] = Field(default=None, max_length=50)
+    file_type: Optional[str] = Field(default=None, max_length=255)
     file_size: Optional[int] = Field(default=None)
     embedding_status: str = Field(default="pending", max_length=20)  # pending | processing | done | failed
     created_at: datetime = Field(default_factory=datetime.utcnow)

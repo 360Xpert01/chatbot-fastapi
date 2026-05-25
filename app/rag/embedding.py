@@ -5,6 +5,7 @@ from google import genai
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.exceptions import EmbeddingProcessingError
+import time
 
 logger = get_logger(__name__)
 
@@ -16,36 +17,25 @@ class EmbeddingService:
     """Service for generating text embeddings using Google Gemini."""
 
     @staticmethod
-    def get_embedding(text: str) -> list[float]:
-        """
-        Generate embedding vector for the given text.
-
-        Args:
-            text: Input text to embed
-
-        Returns:
-            List of float values representing the embedding vector
-
-        Raises:
-            EmbeddingProcessingError: If embedding generation fails
-        """
-        try:
-            logger.debug(f"Generating embedding for text (length: {len(text)} chars)")
-
-            response = ai_client.models.embed_content(
-                model=settings.EMBEDDING_MODEL,
-                contents=text
-            )
-
-            # Handle single vs batch output returns safely
-            if isinstance(response.embeddings, list):
-                embedding = response.embeddings[0].values
-            else:
-                embedding = response.embedding.values
-
-            logger.debug(f"Embedding generated successfully (dimension: {len(embedding)})")
-            return embedding
-
-        except Exception as e:
-            logger.error(f"Failed to generate embedding: {str(e)}", exc_info=True)
-            raise EmbeddingProcessingError(f"Failed to generate embedding: {str(e)}")
+    def get_embedding(text: str, retries: int = 3, backoff: float = 2.0) -> list[float]:
+        last_exc = None
+        for attempt in range(retries):
+            try:
+                logger.debug(f"Generating embedding attempt {attempt + 1} (length: {len(text)} chars)")
+                response = ai_client.models.embed_content(
+                    model=settings.EMBEDDING_MODEL,
+                    contents=text
+                )
+                if isinstance(response.embeddings, list):
+                    embedding = response.embeddings[0].values
+                else:
+                    embedding = response.embedding.values
+                logger.debug(f"Embedding generated (dimension: {len(embedding)})")
+                return embedding
+            except Exception as e:
+                last_exc = e
+                wait = backoff ** attempt
+                logger.warning(f"Embedding attempt {attempt + 1} failed: {e}. Retrying in {wait}s...")
+                time.sleep(wait)
+        logger.error(f"All {retries} embedding attempts failed: {last_exc}", exc_info=True)
+        raise EmbeddingProcessingError(f"Failed to generate embedding after {retries} retries: {last_exc}")
