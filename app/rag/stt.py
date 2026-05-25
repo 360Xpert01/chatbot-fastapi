@@ -1,18 +1,19 @@
 import io
-from groq import Groq
+from openai import OpenAI
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.exceptions import STTError
 
 logger = get_logger(__name__)
-client = Groq(api_key=settings.GROQ_API_KEY)
+# Initializing OpenAI client with your existing settings key
+client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 
 class STTService:
 
     @staticmethod
     def _convert_to_mp3(audio_bytes: bytes) -> bytes:
-        """Convert any audio format to mp3 for Groq compatibility."""
+        """Convert any audio format to mp3 for OpenAI compatibility."""
         try:
             from pydub import AudioSegment
             audio = AudioSegment.from_file(io.BytesIO(audio_bytes))
@@ -45,8 +46,9 @@ class STTService:
                 f.write(mp3_bytes)
             logger.info(f"DEBUG: mp3 saved to {debug_mp3_path}")
     
+            # Switched to the standard OpenAI Audio API structure
             response = client.audio.transcriptions.create(
-                model="whisper-large-v3",
+                model="whisper-1",
                 file=("audio.mp3", mp3_bytes, "audio/mp3"),
             )
     

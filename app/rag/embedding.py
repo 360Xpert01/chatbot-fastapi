@@ -1,20 +1,21 @@
 """
-Embedding service for generating text embeddings using Google Gemini.
+Embedding service for generating text embeddings using OpenAI.
 """
-from google import genai
+import io
+import time
+from openai import OpenAI
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.exceptions import EmbeddingProcessingError
-import time
 
 logger = get_logger(__name__)
 
-# Initialize Google Gemini AI client
-ai_client = genai.Client(api_key=settings.GEMINI_API_KEY)
+# Initialize OpenAI client
+ai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 
 class EmbeddingService:
-    """Service for generating text embeddings using Google Gemini."""
+    """Service for generating text embeddings using OpenAI."""
 
     @staticmethod
     def get_embedding(text: str, retries: int = 3, backoff: float = 2.0) -> list[float]:
@@ -22,14 +23,16 @@ class EmbeddingService:
         for attempt in range(retries):
             try:
                 logger.debug(f"Generating embedding attempt {attempt + 1} (length: {len(text)} chars)")
-                response = ai_client.models.embed_content(
+                
+                # Shifted from Gemini models.embed_content to OpenAI embeddings.create
+                response = ai_client.embeddings.create(
                     model=settings.EMBEDDING_MODEL,
-                    contents=text
+                    input=text
                 )
-                if isinstance(response.embeddings, list):
-                    embedding = response.embeddings[0].values
-                else:
-                    embedding = response.embedding.values
+                
+                # OpenAI returns an array of embedding objects; we grab the values array from the first entry
+                embedding = response.data[0].embedding
+                
                 logger.debug(f"Embedding generated (dimension: {len(embedding)})")
                 return embedding
             except Exception as e:

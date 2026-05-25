@@ -147,15 +147,15 @@ class RAGService:
     ):
         """
         Stream RAG response — retrieves context then streams LLM output.
-    
+
         Yields:
             str: Text chunks
         """
         logger.info(f"Streaming RAG response for tenant: {tenant_id}")
-    
+
         # Step 1: Retrieve context (same as non-streaming)
         context = RAGService.retrieve_context(query, tenant_id, db)
-    
+
         # Step 2: Stream LLM response
         async for chunk in LLMService.generate_response_stream(
             system_prompt=system_prompt,

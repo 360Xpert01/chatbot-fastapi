@@ -14,8 +14,6 @@ class Settings(BaseSettings):
     # API Keys
     OPENAI_API_KEY: str
     GEMINI_API_KEY: str
-    GROQ_API_KEY: str
-
 
     # Cloudinary Storage
     CLOUDINARY_CLOUD_NAME: str
@@ -23,7 +21,7 @@ class Settings(BaseSettings):
     CLOUDINARY_API_SECRET: str
 
     # Embedding Configuration
-    EMBEDDING_MODEL: str = "gemini-embedding-001"
+    EMBEDDING_MODEL: str = "text-embedding-3-large"
     EMBEDDING_DIMENSION: int = 3072
 
     # Text Chunking Configuration
@@ -36,8 +34,7 @@ class Settings(BaseSettings):
     RELEVANCE_THRESHOLD: float = 0.7
 
     # LLM Configuration
-    LLM_PROVIDER_URL: str = "https://openrouter.ai/api/v1"
-    LLM_MODEL: str = "openai/gpt-4o-mini"
+    LLM_MODEL: str = "gpt-4o"
     LLM_MAX_TOKENS: int = 1024
     LLM_TEMPERATURE: float = 0.4
 
@@ -48,6 +45,9 @@ class Settings(BaseSettings):
     ALLOWED_FILE_EXTENSIONS: list[str] = ["pdf", "txt", "docx", "md"]
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    CHAT_MESSAGE_LIMIT: int = 2
+
 
 
 settings = Settings()
