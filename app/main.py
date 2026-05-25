@@ -1,25 +1,65 @@
+"""
+Multi-Tenant AI Platform - Main Application Entry Point
+"""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import chat
+from app.core.database import init_db
+from app.core.exceptions import register_exception_handlers
+from app.core.logging import init_app_logging, get_logger
 
+# Import routers from all modules
+from app.modules.tenants.router import router as tenants_router
+from app.modules.knowledge.router import router as knowledge_router
+from app.modules.engine.router import router as engine_router
+
+# Initialize logging
+init_app_logging()
+logger = get_logger(__name__)
+
+# Create FastAPI application
 app = FastAPI(
-    title="Multi Tenent Chat App",
-    description="Scalable FastAPI backend replacing Next.js API Routes",
-    version="1.0.0"
+    title="Multi-Tenant AI Platform",
+    version="2.0",
+    description="RAG-powered multi-tenant chat application with document knowledge base"
 )
 
-# Configure CORS so your Next.js frontend can call it securely
+# Add CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Replace with specific origins like ["http://localhost:3000"] in production
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Register the chat routing system
-app.include_router(chat.router, prefix="/api")
+# Register global exception handlers
+register_exception_handlers(app)
+
+# Register routers
+app.include_router(tenants_router)
+app.include_router(knowledge_router)
+app.include_router(engine_router)
+
+
+@app.on_event("startup")
+def on_startup():
+    """Initialize database on application startup."""
+    logger.info("Starting Multi-Tenant AI Platform...")
+    init_db()
+    logger.info("Database initialized successfully")
+
 
 @app.get("/")
-def read_root():
-    return {"status": "healthy", "service": "Logistics AI Backend"}
+def root():
+    """Root endpoint for health check."""
+    return {
+        "status": "healthy",
+        "service": "Multi-Tenant AI Platform",
+        "version": "2.0"
+    }
+
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint."""
+    return {"status": "ok"}
