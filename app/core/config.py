@@ -46,7 +46,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    CHAT_MESSAGE_LIMIT: int = 2
+    CHAT_MESSAGE_LIMIT: int = 50
 
 
 
