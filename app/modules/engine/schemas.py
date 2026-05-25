@@ -29,3 +29,7 @@ class ChatResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class VoiceChatResponse(BaseModel):
+    transcript: str
+    reply: str

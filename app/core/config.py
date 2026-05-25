@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     # API Keys
     OPENAI_API_KEY: str
     GEMINI_API_KEY: str
+    GROQ_API_KEY: str
+
 
     # Cloudinary Storage
     CLOUDINARY_CLOUD_NAME: str

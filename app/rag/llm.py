@@ -73,18 +73,19 @@ class LLMService:
             logger.debug(f"Sending {len(formatted_messages)} messages to LLM")
 
             # Call OpenRouter API
-            response = await openai_client.chat.completions.create(
+            stream  = await openai_client.chat.completions.create(
                 model=settings.LLM_MODEL,
                 max_tokens=settings.LLM_MAX_TOKENS,
                 temperature=settings.LLM_TEMPERATURE,
-                messages=formatted_messages
+                messages=formatted_messages,
+                stream=True
             )
 
-            generated_text = response.choices[0].message.content
-            logger.info(f"LLM response generated successfully (length: {len(generated_text)} chars)")
-
-            return generated_text
+            async for chunk in stream:
+                delta = chunk.choices[0].delta.content
+                if delta:
+                    yield delta
 
         except Exception as e:
-            logger.error(f"Failed to generate LLM response: {str(e)}", exc_info=True)
-            raise LLMError(f"Failed to generate response: {str(e)}")
+            logger.error(f"Failed to stream LLM response: {str(e)}", exc_info=True)
+            raise LLMError(f"Failed to stream response: {str(e)}")

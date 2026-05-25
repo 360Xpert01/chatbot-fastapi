@@ -54,6 +54,12 @@ class HTTPException(FastAPIHTTPException):
         super().__init__(status_code=status_code, detail=detail, headers=headers)
 
 
+class STTError(Exception):
+    """Raised when speech-to-text transcription fails."""
+    def __init__(self, message: str):
+        self.message = message
+        super().__init__(message)
+
 # Global Exception Handlers
 async def tenant_not_found_handler(request: Request, exc: TenantNotFoundError) -> JSONResponse:
     """Handle TenantNotFoundError exceptions."""
