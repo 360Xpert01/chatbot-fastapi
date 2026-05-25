@@ -17,7 +17,7 @@ import uuid
 import json
 from app.core.exceptions import HTTPException
 from app.core.config import settings
-
+from app.modules.usage.service import UsageService
 from app.modules.engine.schemas import ChatMessage, VoiceChatResponse
 from app.rag.stt import STTService
 
@@ -40,12 +40,10 @@ async def chat_endpoint(
     system_prompt = tenant.custom_prompt or "You are a helpful customer support assistant."
 
 
-    total_user_messages = sum(1 for m in payload.thread if m.role == "user") + 1
-
-    if total_user_messages > settings.CHAT_MESSAGE_LIMIT:
+    if not UsageService.check_and_increment(db):
         raise HTTPException(
             status_code=429,
-            detail=f"You have reached the {settings.CHAT_MESSAGE_LIMIT} message limit for this session."
+            detail=f"The application-wide limit of {settings.CHAT_MESSAGE_LIMIT} messages has been reached."
         )
 
     async def event_stream():
@@ -92,12 +90,10 @@ async def voice_chat_endpoint(
     except Exception:
         thread_messages = []
 
-    total_user_messages = sum(1 for m in thread_messages if m.role == "user") + 1
-
-    if total_user_messages > settings.CHAT_MESSAGE_LIMIT:
+    if not UsageService.check_and_increment(db):
         raise HTTPException(
             status_code=429,
-            detail=f"You have reached the {settings.CHAT_MESSAGE_LIMIT} message limit for this session."
+            detail=f"The application-wide limit of {settings.CHAT_MESSAGE_LIMIT} messages has been reached."
         )
     
     # Transcribe first (blocking — must finish before streaming)
