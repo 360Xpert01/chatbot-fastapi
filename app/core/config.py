@@ -48,6 +48,8 @@ class Settings(BaseSettings):
 
     CHAT_MESSAGE_LIMIT: int = 50
 
+    CORS_ORIGIN : str
+
 
 
 settings = Settings()

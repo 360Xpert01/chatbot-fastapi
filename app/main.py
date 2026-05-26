@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import init_db
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import init_app_logging, get_logger
+from app.core.config import settings
 
 # Import routers from all modules
 from app.modules.tenants.router import router as tenants_router
@@ -26,7 +27,7 @@ app = FastAPI(
 # Add CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[settings.CORS_ORIGIN],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
