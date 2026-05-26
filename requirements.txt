@@ -10,3 +10,6 @@ python-multipart>=0.0.9
 pydantic-settings>=2.2.1
 groq>=1.2.0 
 pydub
+email-validator
+python-docx
+pypdf
