@@ -1,0 +1,52 @@
+name: CI/CD Deploy
+
+on:
+  push:
+    branches: [ dev ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # Needed for future federated identity
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          # Optional: version: latest
+          # ping: ${{ secrets.SERVER_HOST }}   # Forces connection wait
+
+      
+      - name: Verify Tailscale Connectivity
+        run: |
+          tailscale status
+          tailscale ping ${{ secrets.SERVER_HOST }} || true
+          nc -zv ${{ secrets.SERVER_HOST }} 22 || true
+          echo "Tailscale debug:"
+          tailscale debug prefs || true
+
+      
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          log-public-key: false
+
+      - name: Deploy via SSH (Login Shell)
+        run: |
+          # Ensure .ssh exists and scan host
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+          ssh dev@${{ secrets.SERVER_HOST }} "
+            cd /home/dev/scripts/cicd-deployment &&
+            bash deploy-py.sh '${{ secrets.PROJECT_DIR }}' '' '${{ secrets.PM2_NAME }}'
+          "
+     
